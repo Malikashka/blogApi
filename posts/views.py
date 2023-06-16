@@ -2,7 +2,7 @@ from rest_framework import permissions
 from rest_framework.decorators import action
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
-
+from like.models import Favorite
 from comment.serializers import CommentSerializers
 from like.serializers import LikeUserSerializer
 from .models import Post
@@ -56,6 +56,25 @@ class PostViewSet(ModelViewSet):
         serializer = LikeUserSerializer(instance=likes, many=True)
         return Response(serializer.data, status=200)
 
+
+    @action(['POST', 'DELETE'], detail=True)
+    def favorites(self, request, pk):
+        post = self.get_object() # Post.objects.get(id=pk)
+        user = request.user
+        favorite = user.favorites.filter(post=post)
+
+        if request.method == 'POST':
+            if user.favorites.filter(post=post).exists():
+                return Response({'msg': 'Already in Favorite'}, status=400)
+            Favorite.objects.create(owner=user, post=post)
+            return Response({'msg': 'Added to Favorite'}, status=201)
+
+
+        if favorite.exists():
+            favorite.delete()
+            return Response({'msg': 'Deleted from Favorite'}, status=204)
+        return Response({'msg': 'Post Not Found in Favorite'}, status=404)
+
 # class PostListCreateView(generics.ListCreateAPIView):
 #     queryset = Post.objects.all()
 #
@@ -82,3 +101,4 @@ class PostViewSet(ModelViewSet):
 #         elif self.request.method == 'DELETE':
 #             return [IsAuthorOrAdmin()]
 #         return [permissions.AllowAny()]
+
